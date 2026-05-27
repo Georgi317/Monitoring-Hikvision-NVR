@@ -117,7 +117,7 @@ zabbix_export:
             - tag: Application
               value: 'device info'
         - uuid: fe47451c74a94c15b7aa90aee346d004
-          name: HikvisionType
+          name: 'Hikvision Type NVR/DVR'
           type: SNMP_AGENT
           snmp_oid: .1.3.6.1.4.1.50001.1.100.0
           key: hikEntityType
@@ -182,6 +182,7 @@ zabbix_export:
           key: hikvision.device.firmware
           value_type: TEXT
           description: Character
+          inventory_link: SOFTWARE
           preprocessing:
             - type: XMLPATH
               parameters:
@@ -200,6 +201,7 @@ zabbix_export:
           key: hikvision.device.mac.address
           value_type: TEXT
           description: Character
+          inventory_link: MACADDRESS_A
           preprocessing:
             - type: XMLPATH
               parameters:
@@ -235,6 +237,7 @@ zabbix_export:
           type: DEPENDENT
           key: hikvision.device.name
           value_type: TEXT
+          inventory_link: NAME
           preprocessing:
             - type: XMLPATH
               parameters:
@@ -253,6 +256,7 @@ zabbix_export:
           key: hikvision.device.serial
           value_type: TEXT
           status: DISABLED
+          inventory_link: SERIALNO_B
           preprocessing:
             - type: XMLPATH
               parameters:
@@ -283,21 +287,6 @@ zabbix_export:
           tags:
             - tag: Application
               value: 'device info'
-        - uuid: 8de3d7ef82e845bd878805904491895e
-          name: 'Hikvision HDD Raw Data  SMARTTest status'
-          type: HTTP_AGENT
-          key: hikvision.get.storage.smart.test.status
-          value_type: TEXT
-          status: DISABLED
-          authtype: DIGEST
-          username: '{$HIKVISION.API.USER}'
-          password: '{$HIKVISION.API.PASSWORD}'
-          preprocessing:
-            - type: XML_TO_JSON
-          url: '{$HIKVISION.API.SCHEME}://{HOST.CONN}:{$HIKVISION.API.PORT}/ISAPI/ContentMgmt/Storage/hdd/2/SMARTTest/status'
-          tags:
-            - tag: Application
-              value: Storage
         - uuid: 66bc25ee5f904c6187ac6ea2589f43c1
           name: Uptime
           type: SNMP_AGENT
@@ -326,7 +315,7 @@ zabbix_export:
           key: hikvision.channels.discovery
           item_prototypes:
             - uuid: 53f320515e4d495f8354b7ea28d52d07
-              name: 'Camera [{#CHANNEL.ID}]: IP Address'
+              name: 'Chenel [{#CHANNEL.ID}]: IP Address'
               type: DEPENDENT
               key: 'hikvision.channel.ip[{#CHANNEL.ID}]'
               value_type: TEXT
@@ -344,7 +333,7 @@ zabbix_export:
                 - tag: Application
                   value: 'IP Address'
             - uuid: 7994eb5f32db4d31b702958a95243a1b
-              name: 'Camera [{#CHANNEL.ID}]: Name'
+              name: 'Chenel [{#CHANNEL.ID}]: Name'
               type: DEPENDENT
               key: 'hikvision.channel.name[{#CHANNEL.ID}]'
               value_type: TEXT
@@ -362,7 +351,7 @@ zabbix_export:
                 - tag: Application
                   value: Name
             - uuid: 0c6863c1a0294f3b9bfe477d1a3160ed
-              name: 'Camera [{#CHANNEL.ID}] {#CHANNEL.NAME} ({#CHANNEL.IP}): Online status'
+              name: 'Chenel [{#CHANNEL.ID}] {#CHANNEL.NAME} ({#CHANNEL.IP}): Online status'
               type: DEPENDENT
               key: 'hikvision.channel.online[{#CHANNEL.ID}]'
               value_type: TEXT
@@ -391,7 +380,7 @@ zabbix_export:
                   expression: 'last(/Hikvision By SNMP and API/hikvision.channel.online[{#CHANNEL.ID}])="false"'
                   recovery_mode: RECOVERY_EXPRESSION
                   recovery_expression: 'last(/Hikvision By SNMP and API/hikvision.channel.online[{#CHANNEL.ID}])="true"'
-                  name: 'Camera [{#CHANNEL.ID}] {#CHANNEL.NAME} ({#CHANNEL.IP}): OFFLINE on {HOST.NAME}'
+                  name: 'Chenel [{#CHANNEL.ID}] {#CHANNEL.NAME} ({#CHANNEL.IP}): OFFLINE on {HOST.NAME}'
                   priority: HIGH
                   description: 'Камера {#CHANNEL.NAME} (IP: {#CHANNEL.IP}) на канале {#CHANNEL.ID} недоступна'
                   dependencies:
@@ -399,8 +388,6 @@ zabbix_export:
                       expression: 'last(/Hikvision By SNMP and API/hikDeviceStatus)<>1'
                     - name: 'Hikvision: NVR has been restarted'
                       expression: 'last(/Hikvision By SNMP and API/sysUpTime)<10'
-                    - name: 'Unavailable by ICMP ping'
-                      expression: 'max(/Hikvision By SNMP and API/icmpping,#3)=0'
           master_item:
             key: hikvision.channels.raw
           preprocessing:
@@ -461,6 +448,46 @@ zabbix_export:
                   expression: 'last(/Hikvision By SNMP and API/hikvision.disk.free[{#SNMPINDEX}])<>0'
                   name: 'Disk {#SNMPINDEX}: Abnormal status on {HOST.NAME}'
                   priority: HIGH
+                - uuid: 7811777cf98a45e18dcbaa636c801fd4
+                  expression: 'last(/Hikvision By SNMP and API/hikvision.disk.free[{#SNMPINDEX}])<"100%"'
+                  recovery_mode: NONE
+                  name: 'Disk {#SNMPINDEX}: Free Space 0%'
+                  priority: INFO
+                  description: 'индикация о записи архива на диск, чтобы понимать что информация пишет и косвенно можно понять глубину архива.'
+                  manual_close: 'YES'
+                  tags:
+                    - tag: Disk
+                      value: 'Free Space'
+                - uuid: 3b24254c3e394d68bbe544e0f904df1b
+                  expression: 'last(/Hikvision By SNMP and API/hikvision.disk.free[{#SNMPINDEX}])<"60%"'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/Hikvision By SNMP and API/hikvision.disk.free[{#SNMPINDEX}])>"60%"'
+                  name: 'Disk {#SNMPINDEX}: Free Space 40%'
+                  priority: INFO
+                  description: 'индикация о записи архива на диск, чтобы понимать что информация пишет и косвенно можно понять глубину архива.'
+                  tags:
+                    - tag: Disk
+                      value: 'Free Space'
+                - uuid: 3b0e01a7cf9b442a916f56257fdd2e90
+                  expression: 'last(/Hikvision By SNMP and API/hikvision.disk.free[{#SNMPINDEX}])<"40%"'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/Hikvision By SNMP and API/hikvision.disk.free[{#SNMPINDEX}])>"40%"'
+                  name: 'Disk {#SNMPINDEX}: Free Space 60%'
+                  priority: INFO
+                  description: 'индикация о записи архива на диск, чтобы понимать что информация пишет и косвенно можно понять глубину архива.'
+                  tags:
+                    - tag: Disk
+                      value: 'Free Space'
+                - uuid: 7cfaf70a88eb47469cb8aacb45005da7
+                  expression: 'last(/Hikvision By SNMP and API/hikvision.disk.free[{#SNMPINDEX}])<"20%"'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/Hikvision By SNMP and API/hikvision.disk.free[{#SNMPINDEX}])>"20%"'
+                  name: 'Disk {#SNMPINDEX}: Free Space 80%'
+                  priority: INFO
+                  description: 'индикация о записи архива на диск, чтобы понимать что информация пишет и косвенно можно понять глубину архива.'
+                  tags:
+                    - tag: Disk
+                      value: 'Free Space'
             - uuid: ad53ea59e5e44a888eae4904c8c70ec3
               name: 'Disk {#SNMPINDEX}: Total Size'
               type: SNMP_AGENT
@@ -505,18 +532,6 @@ zabbix_export:
               tags:
                 - tag: Application
                   value: Storage
-        - uuid: 30bc8c49f34d4cf1a1fb700b13baf867
-          name: 'Hikvision HDD Raw Data  SMARTTest status'
-          type: HTTP_AGENT
-          key: 'hikvision.get.storage.smart.test.status1[{#HDD_NAME}]'
-          authtype: DIGEST
-          username: '{$HIKVISION.API.USER}'
-          password: '{$HIKVISION.API.PASSWORD}'
-          parent_discovery_rule:
-            key: Hikvision.HDD.Discovery.Info
-          url: '{$HIKVISION.API.SCHEME}://{HOST.CONN}:{$HIKVISION.API.PORT}/ISAPI/ContentMgmt/Storage/hdd/{#HDD_ID}/SMARTTest/status'
-          preprocessing:
-            - type: XML_TO_JSON
         - uuid: 88dfe166a0674cd99d369e28198d061b
           name: 'Hikvision HDD Discovery Info'
           type: DEPENDENT
@@ -585,87 +600,173 @@ zabbix_export:
               tags:
                 - tag: Application
                   value: Storage
-            - uuid: 091673295d20417180316d9c72ec9f82
-              name: 'Hikvision HDD SMARTTest Self Evaluaing Status [{#HDD_NAME}]'
+            - uuid: 4d926f6eaed7462d9a032ab8bf729c48
+              name: 'HDD [{#HDD_NAME}] Power On Days'
               type: DEPENDENT
-              key: 'hikvision.get.storage.smart.test.self.evaluaing.status1[{#HDD_NAME}]'
+              key: 'hikvision.hdd.powerondays[{#HDD_ID}]'
+              value_type: TEXT
+              description: 'Время безотказной работы жесткого диска Hikvision по результатам SMART-тестирования'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.powerOnDay
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var totalDays = parseInt(value);
+                      
+                      var years  = Math.floor(totalDays / 365);
+                      var remain = totalDays % 365;
+                      var months = Math.floor(remain / 30);
+                      var days   = remain % 30;
+                      
+                      var parts = [];
+                      
+                      if (years > 0) {
+                          if (years === 1) {
+                              parts.push(years + ' год');
+                          } else if (years >= 2 && years <= 4) {
+                              parts.push(years + ' года');
+                          } else {
+                              parts.push(years + ' лет');
+                          }
+                      }
+                      
+                      if (months > 0) {
+                          if (months === 1) {
+                              parts.push(months + ' месяц');
+                          } else if (months >= 2 && months <= 4) {
+                              parts.push(months + ' месяца');
+                          } else {
+                              parts.push(months + ' месяцев');
+                          }
+                      }
+                      
+                      if (days > 0 || parts.length === 0) {
+                          if (days === 1 || days === 21) {
+                              parts.push(days + ' день');
+                          } else if ((days >= 2 && days <= 4) || (days >= 22 && days <= 24)) {
+                              parts.push(days + ' дня');
+                          } else {
+                              parts.push(days + ' дней');
+                          }
+                      }
+                      
+                      return parts.join(', ');
+              master_item:
+                key: 'hikvision.hdd.smart.raw[{#HDD_ID}]'
+              tags:
+                - tag: Application
+                  value: Storage
+              trigger_prototypes:
+                - uuid: 119724c3a93c429ab22993132775a3ed
+                  expression: 'last(/Hikvision By SNMP and API/hikvision.hdd.powerondays[{#HDD_ID}])<10'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/Hikvision By SNMP and API/hikvision.hdd.powerondays[{#HDD_ID}])>=10'
+                  name: 'Storage [{#HDD_NAME}] Uptime disk'
+                  event_name: 'Storage [{#HDD_NAME}] New hdd (Uptime disk< 10d)'
+                  priority: INFO
+            - uuid: 091673295d20417180316d9c72ec9f82
+              name: 'HDD [{#HDD_NAME}] Self Evaluating Status'
+              type: DEPENDENT
+              key: 'hikvision.hdd.selfevalstatus[{#HDD_ID}]'
               value_type: TEXT
               description: 'Самостоятельная оценка состояния жесткого диска Hikvision SMARTTest'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.selfEvaluatingStatus
               master_item:
-                key: 'hikvision.get.storage.smart.test.status[{#HDD_NAME}]'
+                key: 'hikvision.hdd.smart.raw[{#HDD_ID}]'
               tags:
                 - tag: Application
                   value: Storage
               trigger_prototypes:
                 - uuid: f9d586597edb470cb03609918d4af7cc
-                  expression: 'last(/Hikvision By SNMP and API/hikvision.get.storage.smart.test.self.evaluaing.status1[{#HDD_NAME}])="Fail"'
+                  expression: 'last(/Hikvision By SNMP and API/hikvision.hdd.selfevalstatus[{#HDD_ID}])="Fail"'
                   recovery_mode: RECOVERY_EXPRESSION
-                  recovery_expression: 'last(/Hikvision By SNMP and API/hikvision.get.storage.smart.test.self.evaluaing.status1[{#HDD_NAME}])="ok"'
+                  recovery_expression: 'last(/Hikvision By SNMP and API/hikvision.hdd.selfevalstatus[{#HDD_ID}])="ok"'
                   name: 'HDD SMARTTest [{#HDD_NAME}] status is not OK'
                   priority: HIGH
+            - uuid: f097807fd35b4679b8d69e7026706e6a
+              name: 'HDD [{#HDD_NAME}] Self Test Status'
+              type: DEPENDENT
+              key: 'hikvision.hdd.selfteststatus[{#HDD_ID}]'
+              value_type: TEXT
+              description: 'Температура жесткого диска Hikvision SMARTTest'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.selfTestStatus
+              master_item:
+                key: 'hikvision.hdd.smart.raw[{#HDD_ID}]'
+              tags:
+                - tag: Application
+                  value: Storage
             - uuid: 3be4176c2d9c464bb2bc06fff6b96327
-              name: 'Hikvision HDD Raw Data  SMARTTest status'
+              name: 'HDD [{#HDD_NAME}] SMART Raw Data'
               type: HTTP_AGENT
-              key: 'hikvision.get.storage.smart.test.status[{#HDD_NAME}]'
+              key: 'hikvision.hdd.smart.raw[{#HDD_ID}]'
               value_type: TEXT
               authtype: DIGEST
               username: '{$HIKVISION.API.USER}'
               password: '{$HIKVISION.API.PASSWORD}'
               preprocessing:
                 - type: XML_TO_JSON
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var obj = JSON.parse(value);
+                      
+                      // Убираем служебные поля, оставляем чистые данные
+                      var smart = obj.SmartTestStatus;
+                      
+                      var result = {
+                          "id":                  smart.id,
+                          "temperature":         smart.temprature,
+                          "powerOnDay":          smart.powerOnDay,
+                          "selfEvaluatingStatus": smart.selfEvaluaingStatus,
+                          "selfTestStatus":      smart.selfTestStatus
+                      };
+                      
+                      return JSON.stringify(result);
               url: '{$HIKVISION.API.SCHEME}://{HOST.CONN}:{$HIKVISION.API.PORT}/ISAPI/ContentMgmt/Storage/hdd/{#HDD_ID}/SMARTTest/status'
               tags:
                 - tag: Application
                   value: Storage
             - uuid: bc268e4e62f440968b447a358a055c89
-              name: 'Hikvision HDD SMARTTest temprature [{#HDD_NAME}]'
+              name: 'HDD [{#HDD_NAME}] Temperature'
               type: DEPENDENT
-              key: 'hikvision.get.storage.smart.test.temprature[{#HDD_NAME}]'
+              key: 'hikvision.hdd.temperature[{#HDD_ID}]'
               value_type: FLOAT
-              units: ℃
+              units: °C
               description: 'Температура жесткого диска Hikvision SMARTTest'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.temperature
               master_item:
-                key: 'hikvision.get.storage.smart.test.status[{#HDD_NAME}]'
+                key: 'hikvision.hdd.smart.raw[{#HDD_ID}]'
               tags:
                 - tag: Application
                   value: Storage
               trigger_prototypes:
                 - uuid: e2b470fd14f44a6f9d2b22e7e7a599d0
-                  expression: 'last(/Hikvision By SNMP and API/hikvision.get.storage.smart.test.temprature[{#HDD_NAME}])>50'
+                  expression: 'last(/Hikvision By SNMP and API/hikvision.hdd.temperature[{#HDD_ID}])>50'
                   recovery_mode: RECOVERY_EXPRESSION
-                  recovery_expression: 'last(/Hikvision By SNMP and API/hikvision.get.storage.smart.test.temprature[{#HDD_NAME}])=38'
+                  recovery_expression: 'last(/Hikvision By SNMP and API/hikvision.hdd.temperature[{#HDD_ID}])=38'
                   name: 'HDD [{#HDD_NAME}] temprature > 50C'
                   priority: AVERAGE
-            - uuid: f097807fd35b4679b8d69e7026706e6a
-              name: 'Hikvision HDD SMARTTest Test Result List [{#HDD_NAME}]'
-              type: DEPENDENT
-              key: 'hikvision.get.storage.smart.test.test.result.list[{#HDD_NAME}]'
-              value_type: TEXT
-              description: 'Температура жесткого диска Hikvision SMARTTest'
-              master_item:
-                key: 'hikvision.get.storage.smart.test.status[{#HDD_NAME}]'
-              tags:
-                - tag: Application
-                  value: Storage
-            - uuid: 4d926f6eaed7462d9a032ab8bf729c48
-              name: 'Hikvision HDD SMARTTest Uptime disk [{#HDD_NAME}]'
-              type: DEPENDENT
-              key: 'hikvision.get.storage.smart.test.uptime.disk[{#HDD_NAME}]'
-              units: Day
-              description: 'Время безотказной работы жесткого диска Hikvision по результатам SMART-тестирования'
-              master_item:
-                key: 'hikvision.get.storage.smart.test.status[{#HDD_NAME}]'
-              tags:
-                - tag: Application
-                  value: Storage
-              trigger_prototypes:
-                - uuid: 119724c3a93c429ab22993132775a3ed
-                  expression: 'last(/Hikvision By SNMP and API/hikvision.get.storage.smart.test.uptime.disk[{#HDD_NAME}])<10'
-                  recovery_mode: RECOVERY_EXPRESSION
-                  recovery_expression: 'last(/Hikvision By SNMP and API/hikvision.get.storage.smart.test.uptime.disk[{#HDD_NAME}])>=10'
-                  name: 'Storage [{#HDD_NAME}] Uptime disk'
-                  event_name: 'Storage [{#HDD_NAME}] New hdd (Uptime disk< 10d)'
-                  priority: INFO
+          graph_prototypes:
+            - uuid: 40c4a318089a4204a0495c7eb41d2764
+              name: 'HDD [{#HDD_NAME}] Temperature'
+              yaxismax: '0'
+              graph_items:
+                - color: 199C0D
+                  calc_fnc: ALL
+                  item:
+                    host: 'Hikvision By SNMP and API'
+                    key: 'hikvision.hdd.temperature[{#HDD_ID}]'
           master_item:
             key: Hik.Get.Storage
           preprocessing:
@@ -694,13 +795,13 @@ zabbix_export:
                   return JSON.stringify(lld);
       macros:
         - macro: '{$HIKVISION.API.PASSWORD}'
-          value: pass
+          value: h3pQ973W-v
         - macro: '{$HIKVISION.API.PORT}'
-          value: PORT
+          value: '80'
         - macro: '{$HIKVISION.API.SCHEME}'
-          value: http/https
+          value: http
         - macro: '{$HIKVISION.API.USER}'
-          value: login
+          value: zbx
       dashboards:
         - uuid: 784b46315def409c8589dc1297f700c7
           name: 'NVR {#HOST.NAME}'
@@ -744,6 +845,15 @@ zabbix_export:
                     - type: STRING
                       name: items.1
                       value: 'Status NVR'
+                    - type: STRING
+                      name: items.2
+                      value: 'Memory Usage'
+                    - type: STRING
+                      name: items.3
+                      value: 'Total number of disks'
+                    - type: STRING
+                      name: items.4
+                      value: 'Total RAM'
                     - type: STRING
                       name: reference
                       value: IALIJ
